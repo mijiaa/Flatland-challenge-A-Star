@@ -1,0 +1,10 @@
+numpy>=1.16.2
+numba
+recordtype>=1.3
+Pillow>=5.4.1
+msgpack==0.6.1
+msgpack-numpy>=0.4.4.0
+importlib-metadata>=0.17
+importlib-resources>=1.0.1,<2
+attrs
+gym==0.14.0

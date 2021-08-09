@@ -1,0 +1,303 @@
+Metadata-Version: 2.1
+Name: recordtype
+Version: 1.3
+Summary: Similar to namedtuple, but instances are mutable.
+Home-page: https://bitbucket.org/ericvsmith/recordtype
+Author: Eric V. Smith
+Author-email: eric@trueblade.com
+License: Apache License Version 2.0
+Platform: UNKNOWN
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Programming Language :: Python :: 2.6
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Programming Language :: Python :: 3
+Requires-Dist: six
+
+===========
+recordtype
+===========
+
+NOTE
+====
+
+I have switched active development to my `namedlist project
+<https://bitbucket.org/ericvsmith/namedlist>`_. It has a better
+implementation that makes it easier to modify the code. It should be
+fully compatible with recordtype.
+
+Overview
+========
+
+recordtype provides a factory function, named
+recordtype.recordtype. It is similar to collections.namedtuple, with
+the following differences:
+
+* recordtype instances are mutable.
+
+* recordtype supports per-field default values.
+
+* recordtype supports an optional default value, to be used by all
+  fields do not have an explicit default value.
+
+Typical usage
+=============
+
+You can use recordtype like a mutable namedtuple::
+
+    >>> from recordtype import recordtype
+
+    >>> Point = recordtype('Point', 'x y')
+    >>> p = Point(1, 3)
+    >>> p.x = 2
+    >>> assert p.x == 2
+    >>> assert p.y == 3
+
+Or, you can specify a default value for all fields::
+
+    >>> Point = recordtype('Point', 'x y', default=3)
+    >>> p = Point(y=2)
+    >>> assert p.x == 3
+    >>> assert p.y == 2
+
+Or, you can specify per-field default values::
+
+    >>> Point = recordtype('Point', [('x', 0), ('y', 100)])
+    >>> p = Point()
+    >>> assert p.x == 0
+    >>> assert p.y == 100
+
+You can also specify a the per-field defaults with a mapping, instead
+of an interable. Note that this is only useful with an ordered
+mapping, such as an OrderedDict::
+
+    >>> from collections import OrderedDict
+    >>> Point = recordtype('Point', OrderedDict((('y', 0),
+    ...                                          ('x', 100))))
+    >>> p = Point()
+    >>> assert p.x == 100
+    >>> assert p.y == 0
+
+The default value will only be used if it is provided and a per-field
+default is not used::
+
+    >>> Point = recordtype('Point', ['x', ('y', 100)], default=10)
+    >>> p = Point()
+    >>> assert p.x == 10
+    >>> assert p.y == 100
+
+If you use a mapping, the value NO_DEFAULT is convenient to specify
+that a field uses the default value::
+
+    >>> from recordtype import NO_DEFAULT
+    >>> Point = recordtype('Point', OrderedDict((('y', NO_DEFAULT),
+    ...                                          ('x', 100))),
+    ...                             default=5)
+    >>> p = Point()
+    >>> assert p.x == 100
+    >>> assert p.y == 5
+
+
+Creating types
+==============
+
+Specifying Fields
+-----------------
+
+Fields can be specified as in namedtuple: as either a string specifing
+the field names, or as a iterable of field names. These two uses are
+equivalent::
+
+    >>> Point = recordtype('Point', 'x y')
+    >>> Point = recordtype('Point', ['x', 'y'])
+
+If using a string, commas are first converted to spaces. So these are
+equivalent::
+
+    >>> Point = recordtype('Point', 'x y')
+    >>> Point = recordtype('Point', 'x,y')
+
+
+Specifying Defaults
+-------------------
+
+Per-field defaults can be specified by supplying a 2-tuple (name,
+default_value) instead of just a string for the field name. This is
+only supported when you specify a list of field names::
+
+    >>> Point = recordtype('Point', [('x', 0), ('y', 0)])
+    >>> p = Point(3)
+    >>> assert p.x == 3
+    >>> assert p.y == 0
+
+In addition to, or instead of, these per-field defaults, you can also
+specify a default value which is used when no per-field default value
+is specified::
+
+    >>> Point = recordtype('Point', 'x y z', default=0)
+    >>> p = Point(y=3)
+    >>> assert p.x == 0
+    >>> assert p.y == 3
+    >>> assert p.z == 0
+
+    >>> Point = recordtype('Point', [('x', 0), 'y', ('z', 0)], default=4)
+    >>> p = Point(z=2)
+    >>> assert p.x == 0
+    >>> assert p.y == 4
+    >>> assert p.z == 2
+
+In addition to supplying the field names as an iterable of 2-tuples,
+you can also specify a mapping. The keys will be the field names, and
+the values will be the per-field default values. This is most useful
+with an OrderedDict, as the order of the fields will then be
+deterministic.  The module variable NO_DEFAULT can be specified if you
+want a field to use the per-type default value instead of specifying
+it with a field::
+
+    >>> Point = recordtype('Point', OrderedDict((('x', 0),
+    ...                                          ('y', NO_DEFAULT),
+    ...                                          ('z', 0),
+    ...                                          )),
+    ...                             default=4)
+    >>> p = Point(z=2)
+    >>> assert p.x == 0
+    >>> assert p.y == 4
+    >>> assert p.z == 2
+
+Writing to values
+-----------------
+
+The objects retured by the factory function are fully writable, unlike
+the tuple-derived classes returned by namedtuple::
+
+    >>> Point = recordtype('Point', 'x y')
+    >>> p = Point(1, 2)
+    >>> p.y = 4
+    >>> assert p.x == 1
+    >>> assert p.y == 4
+
+
+Specifying __slots__
+--------------------
+
+By default, the returned class sets __slots__, which is initialized to
+the field names. While this decreases memory usage by eliminating the
+instance dict, it also means that you cannot create new instance
+members.
+
+To change this behavior, specify use_slots=False when creating the
+recordtype::
+
+    >>> Point = recordtype('Point', 'x y', use_slots=False)
+    >>> p = Point(0, 1)
+    >>> p.z = 2
+    >>> assert p.x == 0
+    >>> assert p.y == 1
+    >>> assert p.z == 2
+
+
+Additional class members
+------------------------
+
+recordtype classes contain these members:
+
+* _asdict(): Returns a dict which maps field names to their
+  corresponding values.
+
+* _source: A string with the pure Python source code used to create
+  the recordtype class. The source makes the recordtype
+  self-documenting. It can be printed, executed using exec(), or saved
+  to a file and imported.
+
+* _fields: Tuple of strings listing the field names. Useful for introspection.
+
+
+Renaming invalid field names
+----------------------------
+
+This functionality is identical to namedtuple. If you specify
+rename=True, then any invalid field names are changed to _0, _1,
+etc. Reasons for a field name to be invalid are:
+
+* Zero length strings.
+
+* Containing characters other than alphanumerics and underscores.
+
+* A conflict with a Python reserved identifier.
+
+* Beginning with a digit.
+
+* Beginning with an underscore.
+
+* Using the same field name more than once.
+
+For example::
+
+    >>> Point = recordtype('Point', 'x x for', rename=True)
+    >>> assert Point._fields == ('x', '_1', '_2')
+
+
+Mutable default values
+----------------------
+
+Be aware of creating mutable default values. Due to the way Python
+handles default values, each instance of a recordtype will share the
+default. This is especially problematic with default values that are
+lists. For example::
+
+    >>> A = recordtype('A', [('x', [])])
+    >>> a = A()
+    >>> a.x.append(4)
+    >>> b = A()
+    >>> assert b.x == [4]
+
+This is probably not the desired behavior.
+
+Creating and using instances
+============================
+
+Because the type returned by recordtype is a normal Python class, you
+create instances as you would with any Python class.
+
+
+Change log
+==========
+
+1.3 2018-08-03 Eric V. Smith
+----------------------------
+* Python 3 support (thanks Jakob Stasiak).
+* Reformat with black.
+
+1.2 <unreleased> Eric V. Smith
+------------------------------
+* Switch README.txt to support doctest.
+* Add tests for mutable default values.
+* Add warning for mutable default values.
+
+1.1 2011-11-14 Eric V. Smith
+----------------------------
+* No API or code changes.
+* Fixed project URL in setup.py.
+* Fixed license description in setup.py.
+
+1.0 2011-10-23 Eric V. Smith
+----------------------------
+* Stabilize API, move to version 1.0.
+* Added "python setup.py test" support to run unittests.
+* Improve documentation examples.
+* Renamed "default_default" to just "default".
+* Expose "NO_DEFAULT".
+* Support mapping objects in addition to strings and lists for field_names.
+* Add tests for iterables, not just lists, for field_names.
+
+0.2 2011-10-13 Eric V. Smith
+----------------------------
+* Fix a typo in the documentation, no code changes.
+
+0.1 2011-10-12 Eric V. Smith
+----------------------------
+* Initial release.
+
+
