@@ -1,4 +1,4 @@
-# flatland-challenge-1
+# flatland-challenge-A-star
 Solving flatland challenge using A* search algorithm
 
 There is a python interpreter and packaged included in ./flatenv
